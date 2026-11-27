@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:">
+  <title>TOEIC 听力播放器</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, "Microsoft YaHei", sans-serif;
+      color: #192b27;
+      background: #edf2ed;
+      accent-color: #236751;
+      --muted: #53675e;
+      --line: #d7e2d9;
+      --accent: #236751;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; }
+    button, select, input { font: inherit; }
+    button, select { cursor: pointer; }
+    button:disabled, select:disabled { cursor: default; opacity: .58; }
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 3px solid #3b8f74;
+      outline-offset: 3px;
+    }
+
+    .shell { width: min(1120px, calc(100% - 48px)); margin: 48px auto; }
+    .masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 26px;
+    }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(1.6rem, 4vw, 2.5rem); letter-spacing: -.04em; }
+    .folder-button {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--accent);
+      border-radius: 9px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+    }
+    .folder-button:hover { background: #174d3b; }
+    .notice {
+      padding: 12px 15px;
+      margin-bottom: 16px;
+      border-radius: 9px;
+      background: #fff1d6;
+      color: #66470c;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
+      gap: 20px;
+      align-items: start;
+    }
+    .player, .playlist-panel {
+      min-width: 0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .player {
+      background: #142e28;
+      color: #f3faf3;
+      padding: clamp(20px, 4vw, 32px);
+    }
+    .player :focus-visible { outline-color: #aee3c5; }
+    .player h2 { font-size: .86rem; font-weight: 650; color: #b7d7c8; }
+    .track-name {
+      margin: 11px 0 0;
+      min-height: 3em;
+      font-size: clamp(1.15rem, 2.8vw, 1.55rem);
+      line-height: 1.45;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .player-message {
+      min-height: 1.55em;
+      margin-top: 8px;
+      color: #b7d7c8;
+      font-size: .84rem;
+      line-height: 1.55;
+    }
+
+    .timeline { margin-top: 18px; }
+    .seek {
+      display: block;
+      width: 100%;
+      height: 22px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: #aee3c5;
+    }
+    .seek:disabled { cursor: default; }
+    .times {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 4px;
+      color: #c7ddd3;
+      font-size: .85rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .transport {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 22px 0 26px;
+    }
+    .transport button, .speed button, .loop-select {
+      min-height: 44px;
+      border: 1px solid #517267;
+      border-radius: 8px;
+      background: #1d3a32;
+      color: #f3faf3;
+    }
+    .player button:not(:disabled):hover, .loop-select:hover { border-color: #aee3c5; }
+    .transport .play-button, .speed button[aria-pressed="true"] {
+      border-color: #aee3c5;
+      background: #aee3c5;
+      color: #142e28;
+      font-weight: 750;
+    }
+    .speed { margin: 0; padding: 0; border: 0; }
+    .speed legend, .loop-label { color: #b7d7c8; font-size: .86rem; font-weight: 650; }
+    .speed-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 9px;
+    }
+    .speed-buttons button { font-variant-numeric: tabular-nums; }
+    .loop-settings {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .loop-select { padding: 0 10px; }
+
+    .playlist-panel { border: 1px solid var(--line); background: #fbfdfb; }
+    .playlist-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding: 19px 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .playlist-heading h2 { font-size: 1.06rem; }
+    .track-count { color: var(--muted); font-size: .88rem; white-space: nowrap; }
+    .empty { padding: 24px 20px; color: var(--muted); line-height: 1.65; }
+    .track-list {
+      max-height: min(65vh, 640px);
+      margin: 0;
+      padding: 4px 0;
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
+      list-style: none;
+    }
+    .track-list li + li { border-top: 1px solid #ebf1eb; }
+    .track-row {
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 45px;
+      padding: 9px 19px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+    .track-row::before { content: ""; width: 7px; height: 7px; border-radius: 50%; }
+    .track-row:hover { background: #eff6f0; }
+    .track-row[aria-current="true"] {
+      background: #e0f0e5;
+      color: #184d3c;
+      font-weight: 700;
+    }
+    .track-row[aria-current="true"]::before { background: var(--accent); }
+    .track-row:focus-visible { outline-offset: -4px; }
+
+    @media (max-width: 740px) {
+      .shell { width: min(540px, calc(100% - 28px)); margin: 24px auto; }
+      .masthead { margin-bottom: 18px; }
+      .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .track-list { max-height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <h1>TOEIC 听力播放器</h1>
+      <button class="folder-button" id="choose-folder" type="button">选择资料夹</button>
+      <input id="folder-input" type="file" webkitdirectory multiple hidden>
+    </header>
+    <p class="notice" id="storage-notice" role="status" hidden></p>
+
+    <div class="layout">
+      <section class="player" aria-labelledby="player-heading">
+        <h2 id="player-heading">当前曲目</h2>
+        <p class="track-name" id="track-name">等待导入</p>
+        <p class="player-message" id="player-message" role="status"></p>
+        <audio id="audio" preload="metadata"></audio>
+
+        <div class="timeline">
+          <input class="seek" id="seek" type="range" min="0" max="1" step="any" value="0"
+                 aria-label="播放进度" aria-valuetext="0:00" disabled>
+          <div class="times" aria-hidden="true">
+            <span id="elapsed">0:00</span><span id="duration">0:00</span>
+          </div>
+        </div>
+
+        <div class="transport" role="group" aria-label="曲目控制">
+          <button id="previous" type="button" disabled>上一首</button>
+          <button class="play-button" id="play" type="button" disabled>播放</button>
+          <button id="next" type="button" disabled>下一首</button>
+        </div>
+
+        <fieldset class="speed">
+          <legend>全局倍速</legend>
+          <div class="speed-buttons">
+            <button type="button" data-speed="1.2" aria-pressed="true">1.2×</button>
+            <button type="button" data-speed="1.3" aria-pressed="false">1.3×</button>
+            <button type="button" data-speed="1.4" aria-pressed="false">1.4×</button>
+            <button type="button" data-speed="1.5" aria-pressed="false">1.5×</button>
+            <button type="button" data-speed="1.75" aria-pressed="false">1.75×</button>
+            <button type="button" data-speed="2" aria-pressed="false">2.0×</button>
+          </div>
+        </fieldset>
+        <div class="loop-settings">
+          <label class="loop-label" for="loop">循环播放</label>
+          <select class="loop-select" id="loop">
+            <option value="off">关闭循环</option>
+            <option value="track">单曲循环</option>
+            <option value="playlist">列表循环</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="playlist-panel" aria-labelledby="playlist-heading">
+        <div class="playlist-heading">
+          <h2 id="playlist-heading">曲目列表</h2>
+          <p class="track-count" id="track-count" role="status">0 首</p>
+        </div>
+        <p class="empty" id="empty-state">请选择包含 MP3 的资料夹。资料夹内的 MP3 会自动列出。</p>
+        <ul class="track-list" id="track-list" hidden></ul>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const storageKey = "toeic-listening-player:v1";
+      const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+      const byId = (id) => document.getElementById(id);
+      const audio = byId("audio");
+      const folderInput = byId("folder-input");
+      const trackList = byId("track-list");
+      const trackName = byId("track-name");
+      const message = byId("player-message");
+      const seek = byId("seek");
+      const previous = byId("previous");
+      const play = byId("play");
+      const next = byId("next");
+      const loop = byId("loop");
+      const speedButtons = [...document.querySelectorAll("[data-speed]")];
+      const speeds = speedButtons.map((button) => Number(button.dataset.speed));
+
+      let tracks = [];
+      let rows = [];
+      let selected = -1;
+      let source = "";
+      let resumeAt = 0;
+      let speed = 1.2;
+      let repeat = "off";
+      let storageAvailable = true;
+      let savedTrack = null;
+      let lastSave = 0;
+
+      function showStorageNotice() {
+        storageAvailable = false;
+        const notice = byId("storage-notice");
+        notice.textContent = "Chrome 当前无法保存进度。播放和倍速切换仍可使用。";
+        notice.hidden = false;
+      }
+
+      function readSettings() {
+        let raw;
+        try {
+          raw = localStorage.getItem(storageKey);
+        } catch {
+          showStorageNotice();
+          return;
+        }
+        if (!raw) return;
+
+        try {
+          const saved = JSON.parse(raw);
+          if (speeds.includes(saved?.speed)) speed = saved.speed;
+          if (["off", "track", "playlist"].includes(saved?.repeat)) repeat = saved.repeat;
+          if (typeof saved?.track?.key === "string" && Number.isFinite(saved.track.seconds)) {
+            savedTrack = { key: saved.track.key, seconds: Math.max(0, saved.track.seconds) };
+          }
+        } catch {
+          // Start with defaults if the saved data is malformed.
+        }
+      }
+
+      function sourceIsReady() {
+        return source !== "" && audio.currentSrc === source && audio.readyState >= 1;
+      }
+
+      function playbackPosition() {
+        return resumeAt > 0 || !sourceIsReady() ? resumeAt : audio.currentTime;
+      }
+
+      function saveSettings() {
+        if (selected >= 0) {
+          savedTrack = {
+            key: tracks[selected].key,
+            seconds: playbackPosition(),
+          };
+        }
+        lastSave = Date.now();
+        if (!storageAvailable) return;
+
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({ speed, repeat, track: savedTrack }));
+        } catch {
+          showStorageNotice();
+        }
+      }
+
+      function applySpeed() {
+        audio.defaultPlaybackRate = speed;
+        audio.playbackRate = speed;
+        audio.preservesPitch = true;
+        for (const button of speedButtons) {
+          button.setAttribute("aria-pressed", String(Number(button.dataset.speed) === speed));
+        }
+      }
+
+      function neighbor(direction) {
+        const offset = selected + direction;
+        if (selected < 0) return -1;
+        if (offset >= 0 && offset < tracks.length) return offset;
+        if (repeat === "playlist") return (offset + tracks.length) % tracks.length;
+        return -1;
+      }
+
+      function updateTransport() {
+        play.disabled = selected < 0;
+        play.textContent = audio.paused || audio.ended ? "播放" : "暂停";
+        previous.disabled = tracks.length < 2 || neighbor(-1) < 0;
+        next.disabled = tracks.length < 2 || neighbor(1) < 0;
+      }
+
+      function applyLoop() {
+        loop.value = repeat;
+        audio.loop = repeat === "track";
+        updateTransport();
+      }
+
+      function formatTime(seconds) {
+        const total = Math.floor(Math.max(0, seconds));
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor(total / 60) % 60;
+        const remainder = String(total % 60).padStart(2, "0");
+        return hours ? `${hours}:${String(minutes).padStart(2, "0")}:${remainder}` : `${minutes}:${remainder}`;
+      }
+
+      function updateTimeline() {
+        const ready = sourceIsReady();
+        const duration = ready && Number.isFinite(audio.duration) ? audio.duration : 0;
+        const elapsed = playbackPosition();
+        seek.disabled = duration <= 0;
+        seek.max = String(duration || 1);
+        seek.value = String(Math.min(elapsed, duration));
+        const timeText = formatTime(elapsed);
+        seek.setAttribute("aria-valuetext", timeText);
+        byId("elapsed").textContent = timeText;
+        byId("duration").textContent = formatTime(duration);
+      }
+
+      function revealRow(row) {
+        const rowRect = row.getBoundingClientRect();
+        const listRect = trackList.getBoundingClientRect();
+        if (rowRect.top < listRect.top) {
+          trackList.scrollTop += rowRect.top - listRect.top;
+        } else if (rowRect.bottom > listRect.bottom) {
+          trackList.scrollTop += rowRect.bottom - listRect.bottom;
+        }
+      }
+
+      function playAudio() {
+        if (selected < 0) return;
+        const activeSource = source;
+        if (sourceIsReady() && audio.currentTime >= audio.duration) audio.currentTime = 0;
+        message.textContent = "";
+        audio.play().catch((error) => {
+          if (activeSource !== source || error.name === "AbortError") return;
+          message.textContent = error.name === "NotAllowedError"
+            ? "点击「播放」继续。"
+            : "无法播放这首 MP3，可切换到其他曲目。";
+          updateTransport();
+        });
+      }
+
+      function loadTrack(index, shouldPlay, seconds = 0) {
+        const track = tracks[index];
+        audio.pause();
+        if (selected >= 0) rows[selected]?.removeAttribute("aria-current");
+        if (source) URL.revokeObjectURL(source);
+
+        selected = index;
+        resumeAt = seconds;
+        source = URL.createObjectURL(track.file);
+        audio.src = source;
+        audio.load();
+        applySpeed();
+        trackName.textContent = track.file.name;
+        message.textContent = seconds > 0 ? "已恢复上次的播放进度。" : "";
+        rows[index].setAttribute("aria-current", "true");
+        revealRow(rows[index]);
+        updateTimeline();
+        updateTransport();
+        saveSettings();
+        if (shouldPlay) playAudio();
+      }
+
+      function compareTracks(left, right) {
+        const leftNumber = Number(left.file.name.match(/^\d+/)?.[0] ?? Infinity);
+        const rightNumber = Number(right.file.name.match(/^\d+/)?.[0] ?? Infinity);
+        if (leftNumber !== rightNumber) return leftNumber - rightNumber;
+        return collator.compare(left.file.name, right.file.name) || collator.compare(left.key, right.key);
+      }
+
+      function importFolder(files) {
+        const imported = [...files]
+          .filter((file) => /\.mp3$/i.test(file.name))
+          .map((file) => ({ file, key: file.webkitRelativePath || file.name }))
+          .sort(compareTracks);
+
+        if (!imported.length) {
+          if (tracks.length) {
+            message.textContent = "这个资料夹里没有找到 MP3。";
+          } else {
+            byId("empty-state").textContent = "这个资料夹里没有找到 MP3，请重新选择。";
+          }
+          return;
+        }
+
+        saveSettings();
+        const bookmark = savedTrack;
+        audio.pause();
+        selected = -1;
+        tracks = imported;
+        const list = document.createDocumentFragment();
+        rows = tracks.map((track, index) => {
+          const item = document.createElement("li");
+          const row = document.createElement("button");
+          row.className = "track-row";
+          row.type = "button";
+          row.textContent = track.file.name;
+          row.title = track.key;
+          row.addEventListener("click", () => {
+            if (selected === index && !audio.error) {
+              playAudio();
+            } else {
+              loadTrack(index, true);
+            }
+          });
+          item.append(row);
+          list.append(item);
+          return row;
+        });
+
+        trackList.replaceChildren(list);
+        trackList.hidden = false;
+        trackList.scrollTop = 0;
+        byId("empty-state").hidden = true;
+        byId("track-count").textContent = `${tracks.length} 首`;
+        const savedIndex = bookmark ? tracks.findIndex((track) => track.key === bookmark.key) : -1;
+        loadTrack(Math.max(0, savedIndex), false, savedIndex < 0 ? 0 : bookmark.seconds);
+      }
+
+      function move(direction) {
+        const index = neighbor(direction);
+        if (index >= 0) loadTrack(index, !audio.paused && !audio.ended);
+      }
+
+      byId("choose-folder").addEventListener("click", () => folderInput.click());
+      folderInput.addEventListener("change", () => {
+        importFolder(folderInput.files);
+        folderInput.value = "";
+      });
+      previous.addEventListener("click", () => move(-1));
+      next.addEventListener("click", () => move(1));
+      play.addEventListener("click", () => {
+        if (audio.error) {
+          loadTrack(selected, true, resumeAt);
+        } else if (audio.paused || audio.ended) {
+          playAudio();
+        } else {
+          audio.pause();
+        }
+      });
+      seek.addEventListener("input", () => {
+        if (!sourceIsReady()) return;
+        audio.currentTime = Number(seek.value);
+        updateTimeline();
+      });
+      loop.addEventListener("change", () => {
+        repeat = loop.value;
+        applyLoop();
+        saveSettings();
+      });
+      for (const button of speedButtons) {
+        button.addEventListener("click", () => {
+          speed = Number(button.dataset.speed);
+          applySpeed();
+          saveSettings();
+        });
+      }
+
+      audio.addEventListener("loadedmetadata", () => {
+        if (!sourceIsReady()) return;
+        if (resumeAt > 0 && Number.isFinite(audio.duration)) {
+          audio.currentTime = Math.min(resumeAt, audio.duration);
+        }
+        resumeAt = 0;
+        applySpeed();
+        updateTimeline();
+      });
+      audio.addEventListener("durationchange", updateTimeline);
+      audio.addEventListener("timeupdate", () => {
+        updateTimeline();
+        if (sourceIsReady() && Date.now() - lastSave >= 1000) saveSettings();
+      });
+      audio.addEventListener("seeked", saveSettings);
+      audio.addEventListener("play", updateTransport);
+      audio.addEventListener("pause", () => {
+        updateTransport();
+        if (sourceIsReady()) saveSettings();
+      });
+      audio.addEventListener("ended", () => {
+        if (!audio.ended || !sourceIsReady()) return;
+        const index = neighbor(1);
+        if (index >= 0) {
+          loadTrack(index, true);
+        } else {
+          updateTransport();
+          saveSettings();
+        }
+      });
+      audio.addEventListener("error", () => {
+        if (!audio.error || audio.currentSrc !== source) return;
+        message.textContent = "无法播放这首 MP3，可切换到其他曲目。";
+        updateTransport();
+      });
+      window.addEventListener("pagehide", saveSettings);
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) saveSettings();
+      });
+
+      readSettings();
+      applySpeed();
+      applyLoop();
+    })();
+  </script>
+</body>
+</html>
