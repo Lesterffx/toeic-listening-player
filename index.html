@@ -365,7 +365,7 @@
 
       function updateTransport() {
         play.disabled = selected < 0;
-        play.textContent = audio.paused || audio.ended ? "播放" : "暂停";
+        play.textContent = audio.paused || audio.ended ? "播放" : "暫停";
         previous.disabled = tracks.length < 2 || neighbor(-1) < 0;
         next.disabled = tracks.length < 2 || neighbor(1) < 0;
       }
