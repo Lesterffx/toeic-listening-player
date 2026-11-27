@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-Hant-TW">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; media-src blob:">
-  <title>TOEIC 听力播放器</title>
+  <title>TOEIC 聽力播放器</title>
   <style>
     :root {
       color-scheme: light;
@@ -202,22 +202,22 @@
 <body>
   <main class="shell">
     <header class="masthead">
-      <h1>TOEIC 听力播放器</h1>
-      <button class="folder-button" id="choose-folder" type="button">选择资料夹</button>
+      <h1>TOEIC 聽力播放器</h1>
+      <button class="folder-button" id="choose-folder" type="button">選擇資料夾</button>
       <input id="folder-input" type="file" webkitdirectory multiple hidden>
     </header>
     <p class="notice" id="storage-notice" role="status" hidden></p>
 
     <div class="layout">
       <section class="player" aria-labelledby="player-heading">
-        <h2 id="player-heading">当前曲目</h2>
-        <p class="track-name" id="track-name">等待导入</p>
+        <h2 id="player-heading">目前曲目</h2>
+        <p class="track-name" id="track-name">等待匯入</p>
         <p class="player-message" id="player-message" role="status"></p>
         <audio id="audio" preload="metadata"></audio>
 
         <div class="timeline">
           <input class="seek" id="seek" type="range" min="0" max="1" step="any" value="0"
-                 aria-label="播放进度" aria-valuetext="0:00" disabled>
+                 aria-label="播放進度" aria-valuetext="0:00" disabled>
           <div class="times" aria-hidden="true">
             <span id="elapsed">0:00</span><span id="duration">0:00</span>
           </div>
@@ -230,7 +230,7 @@
         </div>
 
         <fieldset class="speed">
-          <legend>全局倍速</legend>
+          <legend>全域倍速</legend>
           <div class="speed-buttons">
             <button type="button" data-speed="1.2" aria-pressed="true">1.2×</button>
             <button type="button" data-speed="1.3" aria-pressed="false">1.3×</button>
@@ -241,21 +241,21 @@
           </div>
         </fieldset>
         <div class="loop-settings">
-          <label class="loop-label" for="loop">循环播放</label>
+          <label class="loop-label" for="loop">循環播放</label>
           <select class="loop-select" id="loop">
-            <option value="off">关闭循环</option>
-            <option value="track">单曲循环</option>
-            <option value="playlist">列表循环</option>
+            <option value="off">關閉循環</option>
+            <option value="track">單曲循環</option>
+            <option value="playlist">清單循環</option>
           </select>
         </div>
       </section>
 
       <section class="playlist-panel" aria-labelledby="playlist-heading">
         <div class="playlist-heading">
-          <h2 id="playlist-heading">曲目列表</h2>
+          <h2 id="playlist-heading">曲目清單</h2>
           <p class="track-count" id="track-count" role="status">0 首</p>
         </div>
-        <p class="empty" id="empty-state">请选择包含 MP3 的资料夹。资料夹内的 MP3 会自动列出。</p>
+        <p class="empty" id="empty-state">請選擇含有 MP3 的資料夾。資料夾內的 MP3 會自動列出。</p>
         <ul class="track-list" id="track-list" hidden></ul>
       </section>
     </div>
@@ -295,7 +295,7 @@
       function showStorageNotice() {
         storageAvailable = false;
         const notice = byId("storage-notice");
-        notice.textContent = "Chrome 当前无法保存进度。播放和倍速切换仍可使用。";
+        notice.textContent = "Chrome 目前無法儲存進度。仍可播放與切換倍速。";
         notice.hidden = false;
       }
 
@@ -415,8 +415,8 @@
         audio.play().catch((error) => {
           if (activeSource !== source || error.name === "AbortError") return;
           message.textContent = error.name === "NotAllowedError"
-            ? "点击「播放」继续。"
-            : "无法播放这首 MP3，可切换到其他曲目。";
+            ? "按一下「播放」繼續。"
+            : "無法播放這首 MP3，可以切換至其他曲目。";
           updateTransport();
         });
       }
@@ -434,7 +434,7 @@
         audio.load();
         applySpeed();
         trackName.textContent = track.file.name;
-        message.textContent = seconds > 0 ? "已恢复上次的播放进度。" : "";
+        message.textContent = seconds > 0 ? "已還原上次的播放進度。" : "";
         rows[index].setAttribute("aria-current", "true");
         revealRow(rows[index]);
         updateTimeline();
@@ -458,9 +458,9 @@
 
         if (!imported.length) {
           if (tracks.length) {
-            message.textContent = "这个资料夹里没有找到 MP3。";
+            message.textContent = "此資料夾沒有 MP3。";
           } else {
-            byId("empty-state").textContent = "这个资料夹里没有找到 MP3，请重新选择。";
+            byId("empty-state").textContent = "此資料夾沒有 MP3，請重新選擇。";
           }
           return;
         }
@@ -570,7 +570,7 @@
       });
       audio.addEventListener("error", () => {
         if (!audio.error || audio.currentSrc !== source) return;
-        message.textContent = "无法播放这首 MP3，可切换到其他曲目。";
+        message.textContent = "無法播放這首 MP3，可以切換至其他曲目。";
         updateTransport();
       });
       window.addEventListener("pagehide", saveSettings);
